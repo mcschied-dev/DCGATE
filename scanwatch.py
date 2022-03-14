@@ -1,24 +1,18 @@
 #!/usr/bin/env python3
-
+"""Monitor a folder and upload files to DRACOON
+"""
+# -*- encoding: utf-8 -*-
 import asyncio
-import getpass
-import json
-import logging
 import os
 import platform
-import re
-import socket
 import subprocess
 import sys
 import time
-import glob
 import filetype
 
 from dracoon import DRACOON, OAuth2ConnectionType
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
-from docx2pdf import convert
-
 
 # DRACOON OAuth2 & credentials conf
 baseURL = "" # please fill in your _DRACOON_ URL
@@ -33,7 +27,7 @@ target = "/SCANSENC/"
 
 # event pattern
 patterns = ["*"]
-ignore_patterns = ["*.lock", ".*", "*.git","*.tmp"]
+ignore_patterns = ["*.lock", ".*", "*.git", "*.tmp"]
 ignore_directories = True
 case_sensitive = True
 
@@ -41,19 +35,22 @@ case_sensitive = True
 path = "./toupload"
 go_recursively = True
 
-
 def check_app(appname):
+    """Check for native apps
+    """
     app_available = True
     print(f"check for 3rd party app dependencies: {appname}")
     try:
-      print(subprocess.check_output([appname, "-version","2>&1"]))
+        print(subprocess.check_output([appname, "-version","2>&1"]))
     except Exception as e:
-      print(e, e.output)
-      app_available = False
+        print(e, e.output)
+        app_available = False
     if not app_available:
         sys.exit(1)
 
-def getSystemInfo():
+def get_system_info():
+    """Show OS details
+    """
     print("\n")
     print("="*40, "SCANWATCH2 System Information", "="*40)
     uname = platform.uname()
@@ -65,38 +62,40 @@ def getSystemInfo():
     print(f"Processor: {uname.processor}")
     print(f"\nFile position: {__file__}\n")
     print(f"Watched folder: {path}\n")
-    check_app("ffmpeg")
-    # check_app("convert")
+    #check_app("ffmpeg")
+    #check_app("convert")
 
-
-async def uploadfiles(myfilename, username, password):
+async def upload_files(myfilename, username, password):
+    """Upload files to DRACOON
+    """
     dracoon = DRACOON(base_url=baseURL, client_id=client_id,
                       client_secret=client_secret)
 
     connection = await dracoon.connect(OAuth2ConnectionType.password_flow, username, password)
     try:
         connected = await dracoon.test_connection()
-        plain_keypair = await dracoon.get_keypair(secret) 
+        plain_keypair = await dracoon.get_keypair(secret)
         await dracoon.upload(file_path=myfilename, target_path=target, display_progress=True)
         try:
             os.remove(myfilename)
             # print(myfilename)
             # print(os.path.isfile(myfilename))
-        except OSError as e:  
+        except OSError as e:
             print ("Error: %s - %s." % (e.filename, e.strerror))
         await dracoon.logout()
     except Exception as e:
-        print(f"Something went wrong! Abort\n")
+        print("Something went wrong! Abort\n")
         print(e, e.output)
         sys.exit(1)
 
 
 async def watcher():
+    """ Event handler
+    """
     my_event_handler = PatternMatchingEventHandler(
         patterns, ignore_patterns, ignore_directories, case_sensitive)
 
     def on_created(event):
-        myfile = event.src_path
         print(f"{event.src_path} has been created!")
         kind = filetype.guess(event.src_path)
         if kind is None:
@@ -106,7 +105,7 @@ async def watcher():
         print('File MIME type: %s' % kind.mime)
 
         print(f"Starting upload to {target}")
-        asyncio.run(uploadfiles(event.src_path, myusername, mypassword))
+        asyncio.run(upload_files(event.src_path, myusername, mypassword))
 
     def on_deleted(event):
         print(f"{event.src_path} deleted!")
@@ -137,5 +136,5 @@ async def watcher():
         my_observer.join()
 
 if __name__ == "__main__":
-    getSystemInfo()
+    get_system_info()
     asyncio.run(watcher())
