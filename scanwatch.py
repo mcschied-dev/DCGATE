@@ -26,9 +26,10 @@ client_id = ""  # please fill in your client id
 client_secret = "" # please fill in your client secret
 myusername = "" # please fill in your username - should be write only
 mypassword = ""  # please fill in your user password
+secret ='' # please fill in your keypair password
 
 # DRACOON target dataroom
-target = "/SCANS/"
+target = "/SCANSENC/"
 
 # event pattern
 patterns = ["*"]
@@ -75,6 +76,7 @@ async def uploadfiles(myfilename, username, password):
     connection = await dracoon.connect(OAuth2ConnectionType.password_flow, username, password)
     try:
         connected = await dracoon.test_connection()
+        plain_keypair = await dracoon.get_keypair(secret) 
         await dracoon.upload(file_path=myfilename, target_path=target, display_progress=True)
         try:
             os.remove(myfilename)
