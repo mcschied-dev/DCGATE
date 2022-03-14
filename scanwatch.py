@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import asyncio
 import getpass
 import json
@@ -10,10 +11,14 @@ import socket
 import subprocess
 import sys
 import time
+import glob
+import filetype
 
 from dracoon import DRACOON, OAuth2ConnectionType
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
+from docx2pdf import convert
+
 
 # DRACOON OAuth2 & credentials conf
 baseURL = "" # please fill in your _DRACOON_ URL
@@ -91,6 +96,13 @@ async def watcher():
     def on_created(event):
         myfile = event.src_path
         print(f"{event.src_path} has been created!")
+        kind = filetype.guess(event.src_path)
+        if kind is None:
+            print('Cannot guess file type!')
+            return
+        print('File extension: %s' % kind.extension)
+        print('File MIME type: %s' % kind.mime)
+
         print(f"Starting upload to {target}")
         asyncio.run(uploadfiles(event.src_path, myusername, mypassword))
 
